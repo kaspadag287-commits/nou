@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Radio Hub — Live Streaming</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#c8a84b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Radio Hub">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+
+/* ═══════════════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════════════ */
+:root {
+  --gold:       #c8a84b;
+  --gold-rgb:   200, 168, 75;
+  --blue-rgb:   60, 130, 255;
+  --bg:         #000005;
+  --text:       #c8d5f0;
+  --r-card:     18px;
+  --r-btn:      10px;
+  --ease:       .25s cubic-bezier(.4,0,.2,1);
+}
+
+/* ═══════════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+body{
+  background:var(--bg);
+  min-height:100vh;
+  font-family:'Inter',sans-serif;
+  padding-bottom:110px;
+  color:var(--text);
+  overflow-x:hidden;
+}
+
+#space-canvas{
+  position:fixed;inset:0;
+  width:100%;height:100%;
+  z-index:0;pointer-events:none;
+}
+
+.page-content{position:relative;z-index:1;}
+
+/* ═══════════════════════════════════════════════
+   HEADER
+═══════════════════════════════════════════════ */
+.hdr{text-align:center;padding:56px 20px 44px;}
+
+.hdr-badge{
+  display:inline-flex;align-items:center;gap:7px;
+  font-size:.6rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;
+  color:var(--gold);border:1px solid rgba(var(--gold-rgb),.35);border-radius:30px;
+  padding:6px 18px;margin-bottom:22px;
+  background:rgba(var(--gold-rgb),.06);backdrop-filter:blur(12px);
+}
+.hdr-badge__dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--gold);box-shadow:0 0 8px rgba(var(--gold-rgb),.8);
+  animation:pulse-dot 2s infinite;
+}
+.hdr-logo{
+  font-size:2.7rem;font-weight:700;letter-spacing:-1.5px;
+  margin-bottom:10px;line-height:1;
+  background:linear-gradient(135deg,#f0d060 0%,#c8a030 45%,#f5e080 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  filter:drop-shadow(0 0 28px rgba(var(--gold-rgb),.45));
+}
+.hdr-sub{font-size:.68rem;color:rgba(var(--gold-rgb),.5);letter-spacing:2.5px;text-transform:uppercase;}
+
+/* ═══════════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════════ */
+.wrapper{max-width:1160px;margin:0 auto;padding:0 20px;}
+.section{margin-top:48px;}
+
+.section__head{display:flex;align-items:center;gap:14px;margin-bottom:18px;}
+.section__icon{
+  width:38px;height:38px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;
+  background:rgba(var(--gold-rgb),.07);border:1px solid rgba(var(--gold-rgb),.22);
+  backdrop-filter:blur(8px);
+}
+.section__title{font-size:.88rem;font-weight:600;color:#e8d07a;letter-spacing:.3px;}
+.section__sub{font-size:.6rem;color:rgba(var(--gold-rgb),.38);margin-top:2px;letter-spacing:.7px;text-transform:uppercase;}
+.section__line{flex:1;height:1px;background:linear-gradient(90deg,rgba(var(--gold-rgb),.28),transparent);}
+
+/* ═══════════════════════════════════════════════
+   GRID
+═══════════════════════════════════════════════ */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:12px;}
+
+/* ═══════════════════════════════════════════════
+   CARD
+═══════════════════════════════════════════════ */
+.card{
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:var(--r-card);
+  padding:18px 13px 13px;
+  cursor:pointer;position:relative;overflow:hidden;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  transition:transform var(--ease),border-color var(--ease),box-shadow var(--ease),background var(--ease);
+  user-select:none;-webkit-tap-highlight-color:transparent;
+}
+.card::before{
+  content:'';position:absolute;inset:0 0 52% 0;
+  background:linear-gradient(180deg,rgba(255,255,255,.07) 0%,transparent 100%);
+  border-radius:var(--r-card) var(--r-card) 0 0;pointer-events:none;
+}
+.card::after{
+  content:'';position:absolute;top:0;left:14%;right:14%;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(var(--gold-rgb),.35),transparent);
+}
+.card:hover{
+  background:rgba(255,255,255,.07);border-color:rgba(var(--gold-rgb),.3);
+  transform:translateY(-5px);box-shadow:0 14px 40px rgba(0,0,0,.55),0 0 22px rgba(var(--gold-rgb),.07);
+}
+.card--active{
+  background:rgba(15,35,80,.38);border-color:rgba(var(--blue-rgb),.5);
+  transform:translateY(-3px);
+  animation:glow-active 2s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════════
+   CARD INTERNALS
+═══════════════════════════════════════════════ */
+.card__flag{position:absolute;top:10px;left:10px;font-size:13px;opacity:.5;line-height:1;}
+.card__name{font-size:.8rem;font-weight:500;color:#e0eaff;text-align:center;margin-bottom:3px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.card__country{font-size:.58rem;color:rgba(var(--gold-rgb),.42);text-align:center;margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.card__error{font-size:.56rem;color:#e06060;text-align:center;margin-top:5px;min-height:12px;}
+.card__live{
+  display:none;position:absolute;bottom:9px;left:50%;transform:translateX(-50%);
+  font-size:.48rem;font-weight:700;letter-spacing:2px;color:#80c0ff;
+  text-transform:uppercase;white-space:nowrap;
+  animation:flash-live 1.8s ease-in-out infinite;
+}
+.card--active .card__live{display:block;}
+
+/* ═══════════════════════════════════════════════
+   ICON CIRCLE
+═══════════════════════════════════════════════ */
+.ico{
+  width:42px;height:42px;border-radius:50%;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 13px;position:relative;overflow:visible;
+  backdrop-filter:blur(12px);
+  transition:transform .28s,box-shadow .28s,border-color .28s;
+}
+.ico__inner{position:absolute;inset:0;border-radius:50%;overflow:hidden;}
+.ico__inner::before{
+  content:'';position:absolute;inset:0 0 50% 0;
+  background:radial-gradient(ellipse at 50% 0%,rgba(255,255,255,.22) 0%,transparent 70%);
+  border-radius:50% 50% 0 0;
+}
+.ico__ray{
+  position:absolute;inset:0;border-radius:50%;
+  background:conic-gradient(from 0deg,rgba(20,60,255,0),rgba(60,140,255,.32),rgba(40,210,255,.55),rgba(80,160,255,.32),rgba(20,60,255,0));
+  opacity:0;transition:opacity .4s;
+  animation:spin-ray 3s linear infinite;
+}
+.ico__ring{
+  position:absolute;inset:-6px;border-radius:50%;border:2px solid transparent;
+  opacity:0;transition:opacity .4s;
+  animation:spin-ring 2s linear infinite;
+  background-image:conic-gradient(
+    from 0deg,
+    rgba(180,220,255,.9) 0deg, rgba(80,160,255,.6) 60deg,
+    rgba(255,255,255,.95) 120deg, rgba(40,120,255,.4) 180deg,
+    rgba(180,230,255,.7) 240deg, rgba(255,255,255,.3) 300deg,
+    rgba(180,220,255,.9) 360deg
+  );
+  background-origin:border-box;background-clip:padding-box,border-box;
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));
+  mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));
+  filter:blur(.3px);
+}
+.ico__ring::before{
+  content:'';position:absolute;width:5px;height:5px;border-radius:50%;
+  top:0;left:50%;transform:translate(-50%,-50%);
+  background:rgba(255,255,255,.95);
+  box-shadow:0 0 6px 3px rgba(180,220,255,.9),0 0 14px 5px rgba(80,160,255,.6);
+}
+.card:hover .ico{transform:scale(1.08);}
+.card--active .ico{
+  transform:scale(1.1);
+  background:rgba(25,70,200,.18);border-color:rgba(80,150,255,.65);
+  animation:pulse-blue 1.8s ease-in-out infinite;
+}
+.card--active .ico__ray{opacity:1;}
+.card--active .ico__ring{opacity:1;animation:spin-ring 2s linear infinite,glow-ring 1.8s ease-in-out infinite;}
+
+/* ═══════════════════════════════════════════════
+   BUTTON
+═══════════════════════════════════════════════ */
+.btn{
+  width:100%;height:30px;border-radius:var(--r-btn);
+  border:1px solid rgba(var(--gold-rgb),.2);background:rgba(var(--gold-rgb),.06);
+  color:rgba(var(--gold-rgb),.7);
+  font-family:'Inter',sans-serif;font-size:.68rem;font-weight:500;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;
+  transition:background var(--ease),border-color var(--ease),color var(--ease);
+  backdrop-filter:blur(8px);
+}
+.btn:hover{background:rgba(var(--gold-rgb),.13);border-color:rgba(var(--gold-rgb),.42);color:#e8d07a;}
+.btn--playing{
+  background:rgba(30,70,200,.28);border-color:rgba(80,150,255,.52);color:#80c0ff;
+  animation:pulse-btn 1.8s ease-in-out infinite;
+}
+.btn--loading{color:rgba(var(--gold-rgb),.32);}
+
+/* ═══════════════════════════════════════════════
+   AUDIO BARS
+═══════════════════════════════════════════════ */
+.bars{display:flex;gap:2px;align-items:center;height:12px;}
+.bars span{width:2px;border-radius:2px;background:currentColor;animation:bounce-bar .85s ease-in-out infinite;}
+.bars span:nth-child(2){animation-delay:.12s;}
+.bars span:nth-child(3){animation-delay:.24s;}
+.bars span:nth-child(4){animation-delay:.12s;}
+
+/* ═══════════════════════════════════════════════
+   NOW PLAYING BAR
+═══════════════════════════════════════════════ */
+#npbar{
+  position:fixed;bottom:0;left:0;right:0;
+  background:rgba(3,7,18,.93);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-top:1px solid rgba(var(--gold-rgb),.18);
+  padding:12px 24px;
+  display:flex;align-items:center;gap:16px;
+  transform:translateY(100%);transition:transform .34s cubic-bezier(.4,0,.2,1);
+  z-index:500;
+}
+#npbar.show{transform:translateY(0);}
+#npbar::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(var(--gold-rgb),.55),transparent);
+}
+.np-dot{
+  width:9px;height:9px;border-radius:50%;flex-shrink:0;
+  background:var(--gold);box-shadow:0 0 10px rgba(var(--gold-rgb),.8);
+  animation:pulse-dot 1.8s infinite;
+}
+.np-info{flex:1;min-width:0;}
+.np-name{font-size:.88rem;font-weight:500;color:#e8d07a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.np-sub{font-size:.6rem;color:rgba(var(--gold-rgb),.48);margin-top:2px;}
+.np-bars{color:var(--gold);}
+.stop-btn{
+  flex-shrink:0;background:rgba(var(--gold-rgb),.08);
+  border:1px solid rgba(var(--gold-rgb),.28);border-radius:var(--r-btn);
+  color:rgba(var(--gold-rgb),.68);font-family:'Inter',sans-serif;
+  font-size:.7rem;font-weight:500;padding:7px 16px;cursor:pointer;
+  transition:all .18s;white-space:nowrap;backdrop-filter:blur(8px);
+}
+.stop-btn:hover{border-color:rgba(var(--gold-rgb),.65);background:rgba(var(--gold-rgb),.15);color:#e8d07a;}
+
+/* ═══════════════════════════════════════════════
+   FOOTER
+═══════════════════════════════════════════════ */
+.footer{
+  text-align:center;padding:40px 20px 0;
+  font-size:.65rem;color:rgba(var(--gold-rgb),.38);
+  letter-spacing:2.5px;text-transform:uppercase;font-weight:400;
+}
+.footer__name{color:rgba(var(--gold-rgb),.75);letter-spacing:2px;font-weight:600;}
+
+/* ═══════════════════════════════════════════════
+   KEYFRAMES
+═══════════════════════════════════════════════ */
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.3;transform:scale(.6);}}
+@keyframes glow-active{
+  0%,100%{box-shadow:0 0 0 1px rgba(40,100,255,.45),0 0 18px rgba(40,100,255,.2),0 12px 40px rgba(0,0,0,.6);}
+  50%{box-shadow:0 0 0 1px rgba(80,170,255,.7),0 0 32px rgba(80,170,255,.4),0 12px 40px rgba(0,0,0,.6);}
+}
+@keyframes pulse-blue{
+  0%,100%{box-shadow:0 0 0 2px rgba(40,100,255,.4),0 0 12px 4px rgba(40,100,255,.5),0 0 30px 8px rgba(40,100,255,.22),0 0 60px 16px rgba(40,100,255,.08);border-color:rgba(40,100,255,.7);background:rgba(25,70,200,.18);}
+  50%{box-shadow:0 0 0 3px rgba(80,170,255,.65),0 0 22px 7px rgba(80,170,255,.7),0 0 55px 15px rgba(80,170,255,.32),0 0 90px 25px rgba(80,170,255,.12);border-color:rgba(130,210,255,.95);background:rgba(50,130,255,.28);}
+}
+@keyframes spin-ray{to{transform:rotate(360deg);}}
+@keyframes spin-ring{to{transform:rotate(360deg);}}
+@keyframes glow-ring{
+  0%,100%{filter:blur(.3px) drop-shadow(0 0 4px rgba(60,140,255,.7));}
+  50%{filter:blur(.3px) drop-shadow(0 0 10px rgba(100,200,255,1));}
+}
+@keyframes pulse-btn{
+  0%,100%{border-color:rgba(40,100,255,.5);color:#80b0ff;}
+  50%{border-color:rgba(80,190,255,.85);color:#b0e0ff;}
+}
+@keyframes bounce-bar{0%,100%{height:2px;opacity:.25;}50%{height:12px;opacity:1;}}
+@keyframes flash-live{0%,100%{opacity:1;color:#80c0ff;}50%{opacity:.4;color:#40e0ff;}}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+</style>
+</head>
+<body>
+
+<canvas id="space-canvas"></canvas>
+
+<div class="page-content">
+
+  <header class="hdr">
+    <div class="hdr-badge"><span class="hdr-badge__dot"></span> Live Streaming</div>
+    <div class="hdr-logo">Radio Hub</div>
+    <p class="hdr-sub">Belgium &nbsp;·&nbsp; France &nbsp;·&nbsp; Syria</p>
+  </header>
+
+  <main class="wrapper">
+
+    <section class="section">
+      <div class="section__head">
+        <div class="section__icon">🎙</div>
+        <div><div class="section__title">Belgium — VRT</div><div class="section__sub">Flemish · Dutch · icecast.vrtcdn.be</div></div>
+        <div class="section__line"></div>
+      </div>
+      <div class="grid" id="grid-vrt"></div>
+    </section>
+
+    <section class="section">
+      <div class="section__head">
+        <div class="section__icon">📡</div>
+        <div><div class="section__title">Belgium — RTBF</div><div class="section__sub">Wallonia · French · radio.rtbf.be</div></div>
+        <div class="section__line"></div>
+      </div>
+      <div class="grid" id="grid-rtbf"></div>
+    </section>
+
+    <section class="section">
+      <div class="section__head">
+        <div class="section__icon">🇫🇷</div>
+        <div><div class="section__title">France — Radio France</div><div class="section__sub">Official · icecast.radiofrance.fr</div></div>
+        <div class="section__line"></div>
+      </div>
+      <div class="grid" id="grid-fr"></div>
+    </section>
+
+    <section class="section">
+      <div class="section__head">
+        <div class="section__icon">🇸🇾</div>
+        <div><div class="section__title">Syria — TV &amp; Radio</div><div class="section__sub">Syria TV · Ninar FM · Sham FM · Radio Damascus</div></div>
+        <div class="section__line"></div>
+      </div>
+      <div class="grid" id="grid-syria"></div>
+    </section>
+
+    <footer class="footer">Created by <span class="footer__name">Nour</span></footer>
+
+  </main>
+</div>
+
+<div id="npbar" role="status" aria-live="polite">
+  <div class="np-dot"></div>
+  <div class="np-info">
+    <div class="np-name" id="np-name">—</div>
+    <div class="np-sub"  id="np-sub">Live Radio</div>
+  </div>
+  <div class="bars np-bars"><span></span><span></span><span></span><span></span></div>
+  <button class="stop-btn" id="stop-btn">⏹ Stop</button>
+</div>
+
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════════════
+   STAR FIELD MODULE
+═══════════════════════════════════════════════ */
+const StarField = (() => {
+  const canvas = document.getElementById('space-canvas');
+  const ctx    = canvas.getContext('2d');
+  let W, H, stars = [];
+
+  const rand = (a, b) => Math.random() * (b - a) + a;
+
+  function buildStars() {
+    stars = [];
+    const count = Math.floor((W * H) / 120);
+    for (let i = 0; i < count; i++) {
+      const t       = Math.random();
+      const r       = t < .78 ? rand(.1,.4) : t < .93 ? rand(.4,.9) : rand(.9,1.8);
+      const twinkle = Math.random() < .38;
+      const bright  = Math.random() < .18;
+      stars.push({
+        x: rand(0,W), y: rand(0,H), r,
+        baseAlpha: bright ? rand(.8,1) : rand(.12,.72),
+        phase: rand(0, Math.PI*2), speed: rand(.0003,.0025),
+        hue: Math.random() < .88 ? null : rand(180,270),
+        depth: rand(.2,.9), twinkle, bright,
+        blinkOn: Math.random() < .7,
+        blinkTimer: rand(0,4000), blinkInterval: rand(1000,4000),
+        fadeVal: Math.random() < .7 ? 1 : 0,
+      });
+    }
+  }
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+
+  function draw(ts) {
+    ctx.clearRect(0, 0, W, H);
+    for (const s of stars) {
+      let alpha;
+      if (s.twinkle) {
+        s.blinkTimer += 16;
+        if (s.blinkTimer >= s.blinkInterval) {
+          s.blinkTimer    = 0;
+          s.blinkInterval = rand(800, 4500);
+          s.blinkOn       = !s.blinkOn;
+        }
+        s.fadeVal += ((s.blinkOn ? s.baseAlpha : 0) - s.fadeVal) * .025;
+        alpha = Math.max(0, Math.min(1, s.fadeVal));
+      } else {
+        const t = ts * s.speed;
+        const w = Math.sin(t + s.phase) * .5 + Math.sin(t*2.7 + s.phase*1.3) * .22;
+        const n = (w + .72) / 1.44;
+        alpha = Math.max(.02, Math.min(1, s.baseAlpha * (1 - s.depth + n * s.depth)));
+      }
+      if (alpha < .01) continue;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      if (s.bright && alpha > .3) {
+        const g = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r*7);
+        g.addColorStop(0,  `rgba(255,255,255,${alpha*.75})`);
+        g.addColorStop(.4, `rgba(200,220,255,${alpha*.25})`);
+        g.addColorStop(1,  'rgba(180,210,255,0)');
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.r*7, 0, Math.PI*2);
+        ctx.fillStyle = g; ctx.fill();
+        ctx.globalAlpha = alpha;
+      }
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+      ctx.fillStyle = s.hue ? `hsl(${s.hue},55%,92%)` : '#ffffff';
+      ctx.fill(); ctx.restore();
+    }
+    requestAnimationFrame(draw);
+  }
+
+  function init() {
+    resize(); buildStars(); requestAnimationFrame(draw);
+    window.addEventListener('resize', () => { resize(); buildStars(); });
+  }
+
+  return { init };
+})();
+
+/* ═══════════════════════════════════════════════
+   STATION DATA
+═══════════════════════════════════════════════ */
+const STATIONS = {
+  'grid-vrt': [
+    { name:'Radio 1',        country:'Belgium · Dutch',     flag:'🇧🇪', urls:['https://icecast.vrtcdn.be/radio1-high.mp3',       'https://icecast.vrtcdn.be/radio1.aac'] },
+    { name:'Radio 2',        country:'Belgium · Dutch',     flag:'🇧🇪', urls:['https://icecast.vrtcdn.be/ra2ant-high.mp3',        'https://icecast.vrtcdn.be/ra2ovl-high.mp3'] },
+    { name:'Studio Brussel', country:'Belgium · Dutch',     flag:'🇧🇪', urls:['https://icecast.vrtcdn.be/stubru-high.mp3',        'https://icecast.vrtcdn.be/stubru.aac'] },
+    { name:'MNM',            country:'Belgium · Dutch',     flag:'🇧🇪', urls:['https://icecast.vrtcdn.be/mnm-high.mp3',           'https://icecast.vrtcdn.be/mnm.aac'] },
+    { name:'MNM Hits',       country:'Belgium · Dutch',     flag:'🇧🇪', urls:['https://icecast.vrtcdn.be/mnm_hits-high.mp3',      'https://icecast.vrtcdn.be/mnm_hits.aac'] },
+    { name:'Klara',          country:'Belgium · Classical', flag:'🇧🇪', urls:['https://icecast.vrtcdn.be/klara-high.mp3',         'https://icecast.vrtcdn.be/klara.aac'] },
+    { name:'Klara Continuo', country:'Belgium · Classical', flag:'🇧🇪', urls:['https://icecast.vrtcdn.be/klaracontinuo-high.mp3', 'https://icecast.vrtcdn.be/klaracontinuo.aac'] },
+    { name:'Sporza',         country:'Belgium · Sports',    flag:'🇧🇪', urls:['https://icecast.vrtcdn.be/sporza-high.mp3',        'https://icecast.vrtcdn.be/vrtnws-high.mp3'] },
+  ],
+  'grid-rtbf': [
+    { name:'La Première',  country:'Belgium · French',    flag:'🇧🇪', urls:['https://radio.rtbf.be/lapremiere/mp3-160/me','https://radio.rtbf.be/lapremiere/mp3-128/me','http://radio.rtbf.be/lapremiere/mp3-160/me'] },
+    { name:'Classic 21',   country:'Belgium · French',    flag:'🇧🇪', urls:['https://radio.rtbf.be/c21/mp3-160/me','https://radio.rtbf.be/c21/mp3-128/me','http://radio.rtbf.be/c21/mp3-160/me'] },
+    { name:'Musiq3',       country:'Belgium · Classical', flag:'🇧🇪', urls:['https://radio.rtbf.be/musiq3/mp3-320/me','https://radio.rtbf.be/musiq3/mp3-160/me','http://radio.rtbf.be/musiq3/mp3-320/me'] },
+    { name:'VivaCité Bxl', country:'Belgium · French',    flag:'🇧🇪', urls:['https://radio.rtbf.be/viva-bxl/mp3-160/me','https://radio.rtbf.be/viva-bxl/mp3-128/me','http://radio.rtbf.be/viva-bxl/mp3-160/me'] },
+    { name:'Tipik Radio',  country:'Belgium · French',    flag:'🇧🇪', urls:['https://radio.rtbf.be/tipik/mp3-160/me','https://radio.rtbf.be/tipik/mp3-128/me','http://radio.rtbf.be/tipik/mp3-160/me'] },
+  ],
+  'grid-fr': [
+    { name:'France Inter',   country:'France · General',   flag:'🇫🇷', urls:['https://icecast.radiofrance.fr/franceinter-midfi.mp3'] },
+    { name:'France Info',    country:'France · News',       flag:'🇫🇷', urls:['https://icecast.radiofrance.fr/franceinfo-midfi.mp3'] },
+    { name:'France Musique', country:'France · Classical',  flag:'🇫🇷', urls:['https://icecast.radiofrance.fr/francemusique-midfi.mp3'] },
+    { name:'France Culture', country:'France · Culture',    flag:'🇫🇷', urls:['https://icecast.radiofrance.fr/franceculture-midfi.mp3'] },
+    { name:'FIP',            country:'France · Eclectic',   flag:'🇫🇷', urls:['https://icecast.radiofrance.fr/fip-midfi.mp3'] },
+    { name:'FIP Rock',       country:'France · Rock',       flag:'🇫🇷', urls:['https://icecast.radiofrance.fr/fiprock-midfi.mp3'] },
+    { name:'FIP Jazz',       country:'France · Jazz',       flag:'🇫🇷', urls:['https://icecast.radiofrance.fr/fipjazz-midfi.mp3'] },
+  ],
+  'grid-syria': [
+    { name:'Syria TV',       country:'Syria · Al-Souriya',       flag:'🇸🇾', urls:['https://live.kwikmotion.com/syriatvlive/syriatv.smil/playlist_dvr.m3u8','https://svs.itworkscdn.net/syriatvlive/syriatv.smil/playlist_dvr.m3u8'] },
+    { name:'Ninar FM',       country:'Syria · Youth Music',      flag:'🇸🇾', urls:['http://ninarfm.grtvstream.com:8896/stream','http://ninarfm.grtvstream.com:8896/live'] },
+    { name:'Sham FM',        country:'Syria · Music & News',     flag:'🇸🇾', urls:['https://radioshamfm.grtvstream.com:8400/stream'] },
+    { name:'Radio Damascus', country:'Syria · Official · 95 FM', flag:'🇸🇾', urls:['https://radiodamascus.ortas.live/RDimshq/RDimshqAudioLive/playlist.m3u8'] },
+  ],
+};
+
+/* ═══════════════════════════════════════════════
+   HLS LOADER MODULE
+═══════════════════════════════════════════════ */
+const HlsLoader = (() => {
+  let loaded = false;
+  const queue = [];
+
+  return {
+    load(callback) {
+      if (loaded) { callback(); return; }
+      queue.push(callback);
+      if (queue.length > 1) return;
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.7/hls.min.js';
+      s.onload = () => { loaded = true; queue.forEach(fn => fn()); queue.length = 0; };
+      document.head.appendChild(s);
+    }
+  };
+})();
+
+/* ═══════════════════════════════════════════════
+   PLAYER MODULE
+═══════════════════════════════════════════════ */
+const Player = (() => {
+  let activeAudio = null, activeCard = null, activeHls = null, activeSt = null;
+
+  const npbar  = document.getElementById('npbar');
+  const npName = document.getElementById('np-name');
+  const npSub  = document.getElementById('np-sub');
+
+  function _cleanup() {
+    if (activeHls)   { activeHls.destroy(); activeHls = null; }
+    if (activeAudio) { activeAudio.pause(); activeAudio.src = ''; activeAudio = null; }
+    if (activeCard)  { activeCard.classList.remove('card--active'); _idle(activeCard); }
+    activeCard = activeSt = null;
+    npbar.classList.remove('show');
+  }
+
+  function _idle(card) {
+    const btn = card.querySelector('.btn');
+    if (btn) { btn.className = 'btn'; btn.innerHTML = '&#9654; Play'; }
+    const err = card.querySelector('.card__error');
+    if (err) err.textContent = '';
+  }
+
+  function _connecting(card) {
+    const btn = card.querySelector('.btn');
+    if (btn) {
+      btn.className = 'btn btn--loading';
+      btn.innerHTML = '<span style="display:inline-block;animation:spin .6s linear infinite;font-size:12px;">&#8635;</span> Connecting…';
+    }
+  }
+
+  function _playing(card, st) {
+    const btn = card.querySelector('.btn');
+    if (btn) { btn.className = 'btn btn--playing'; btn.innerHTML = '<div class="bars" style="color:inherit"><span></span><span></span><span></span><span></span></div>'; }
+    npName.textContent = st.name;
+    npSub.textContent  = st.country;
+    npbar.classList.add('show');
+    const err = card.querySelector('.card__error');
+    if (err) err.textContent = '';
+  }
+
+  function _error(card) {
+    _idle(card);
+    const err = card.querySelector('.card__error');
+    if (err) err.textContent = '⚠ Stream unavailable';
+    card.classList.remove('card--active');
+    activeCard = activeSt = null;
+  }
+
+  function _tryUrls(urls, idx, card, st) {
+    if (idx >= urls.length) { _error(card); return; }
+    _connecting(card);
+    const url  = urls[idx];
+    const next = () => { if (activeCard === card) _tryUrls(urls, idx+1, card, st); };
+    url.includes('.m3u8') ? HlsLoader.load(() => _hls(url, next, card, st)) : _mp3(url, next, card, st);
+  }
+
+  function _mp3(url, next, card, st) {
+    const audio = new Audio();
+    activeAudio  = audio;
+    let started  = false;
+    const fail   = () => { if (activeAudio !== audio || started) return; audio.pause(); audio.src = ''; next(); };
+    audio.addEventListener('playing', () => { if (activeAudio !== audio) return; started = true; _playing(card, st); });
+    audio.addEventListener('error',   fail);
+    audio.addEventListener('stalled', () => setTimeout(fail, 7000));
+    setTimeout(() => { if (!started) fail(); }, 13000);
+    audio.src = url; audio.play().catch(fail);
+  }
+
+  function _hls(url, next, card, st) {
+    if (typeof Hls === 'undefined' || !Hls.isSupported()) { _mp3(url, next, card, st); return; }
+    const audio = new Audio();
+    const hls   = new Hls({ enableWorker: false, lowLatencyMode: true });
+    activeAudio  = audio; activeHls = hls;
+    let started  = false;
+    const fail   = () => {
+      if (activeAudio !== audio || started) return;
+      hls.destroy(); if (activeHls === hls) activeHls = null;
+      audio.pause(); audio.src = ''; next();
+    };
+    hls.loadSource(url); hls.attachMedia(audio);
+    hls.on(Hls.Events.MANIFEST_PARSED, () => audio.play().catch(fail));
+    hls.on(Hls.Events.ERROR, (_, d) => { if (d.fatal) fail(); });
+    audio.addEventListener('playing', () => { if (activeAudio !== audio) return; started = true; _playing(card, st); });
+    setTimeout(() => { if (!started) fail(); }, 15000);
+  }
+
+  return {
+    toggle(st, card) {
+      if (activeSt === st) { _cleanup(); return; }
+      _cleanup();
+      activeSt = st; activeCard = card;
+      card.classList.add('card--active');
+      _tryUrls(st.urls, 0, card, st);
+    },
+    stop: _cleanup,
+  };
+})();
+
+document.getElementById('stop-btn').addEventListener('click', () => Player.stop());
+
+/* ═══════════════════════════════════════════════
+   RENDER
+═══════════════════════════════════════════════ */
+function createCard(st) {
+  const card = document.createElement('article');
+  card.className = 'card';
+  card.innerHTML = `
+    <div class="card__flag">${st.flag}</div>
+    <div class="ico">
+      <div class="ico__ring"></div>
+      <div class="ico__ray"></div>
+      <div class="ico__inner"></div>
+    </div>
+    <div class="card__name" title="${st.name}">${st.name}</div>
+    <div class="card__country">${st.country}</div>
+    <button class="btn">&#9654; Play</button>
+    <div class="card__error"></div>
+    <div class="card__live">● LIVE</div>`;
+
+  card.querySelector('.btn').addEventListener('click', e => { e.stopPropagation(); Player.toggle(st, card); });
+  card.addEventListener('click', () => Player.toggle(st, card));
+  return card;
+}
+
+(function render() {
+  for (const [gridId, stations] of Object.entries(STATIONS)) {
+    const grid = document.getElementById(gridId);
+    if (!grid) continue;
+    stations.forEach(st => grid.appendChild(createCard(st)));
+  }
+})();
+
+StarField.init();
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js")
+      .then(r => console.log("SW registered:", r.scope))
+      .catch(e => console.warn("SW failed:", e));
+  });
+}
+</script>
+</body>
+</html>
